@@ -1,0 +1,11 @@
+<VisualStudioProject>
+  <Project ...>
+    <Name>Multibots</Name>
+    <ProjectType>Solution</ProjectType>
+    <Version>1.0</Version>
+    <ProjectConfiguration>
+      <Configuration Name="Debug" />
+      <Configuration Name="Release" />
+    </ProjectConfiguration>
+  </Project>
+</VisualStudioProject>
