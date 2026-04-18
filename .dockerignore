@@ -1,0 +1,9 @@
+.git
+.gitignore
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/*.user
+**/*.suo
+**/.DS_Store
