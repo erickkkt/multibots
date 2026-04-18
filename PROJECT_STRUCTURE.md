@@ -5,34 +5,33 @@
 ```plaintext
 multibots/
 ├── backend/
-│   ├── Dockerfile
-│   ├── multibots.sln
+│   ├── Multibots.sln
 │   ├── Multibots.Api/
 │   │   ├── Controllers/
+│   │   │   ├── AnalyzeController.cs
+│   │   │   └── AssistantController.cs
 │   │   ├── Models/
 │   │   ├── Services/
-│   │   ├── Startup.cs
 │   │   └── Program.cs
+│   ├── Multibots.Api.Tests/
 │   └── Multibots.Core/
-│       ├── Interfaces/
-│       ├── Entities/
-│       └── Services/
-│
-├── frontend/
-│   ├── Dockerfile
-│   ├── angular.json
-│   ├── package.json
-│   ├── src/
-│   │   ├── app/
-│   │   ├── assets/
-│   │   ├── environments/
-│   │   └── index.html
-│   └── tsconfig.json
-│
-└── docker-compose.yml
+├── python_engine/
+│   ├── engine.py
+│   ├── vnstock_adapter.py
+│   ├── server.py
+│   └── test_engine.py
+└── frontend/
+    ├── angular.json
+    ├── package.json
+    ├── tsconfig*.json
+    └── src/
+        ├── app/
+        ├── environments/
+        └── index.html
 ```
 
-## Docker Configuration
-- Backend Dockerfile: Specify the build instructions for the .NET backend service.
-- Frontend Dockerfile: Specify the build instructions for the Angular frontend.
-- Docker Compose: To orchestrate the backend and frontend services together.
+## Phase 1 Components
+
+- **Python Engine**: Rule-based analysis (MA, RSI, MACD, volume breakout), OHLCV normalization, and `/analyze` HTTP endpoint.
+- **C# API Gateway**: `/analyze` endpoint, request validation (max 5 symbols), in-memory caching, and HTTP integration with Python engine.
+- **Angular Dashboard**: Symbol input (max 5), parameter controls, realtime signal cards, and price + signal chart overlay.

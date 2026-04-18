@@ -1,1 +1,38 @@
-{\n  "projects": {\n    "multibots": {\n      "projectType": "application",\n      "root": "src/",\n      "sourceRoot": "src/",\n      "prefix": "app",\n      "architect": {\n        "build": {\n          "builder": "@angular-devkit/build-angular:browser",\n          "options": {\n            "outputPath": "dist/multibots/",\n            "index": "src/index.html",\n            "main": "src/main.ts",\n            "polyfills": "src/polyfills.ts",\n            "tsConfig": "tsconfig.app.json",\n            "assets": [\n              "src/favicon.ico",\n              "src/assets"\n            ],\n            "styles": [\n              "src/styles.css"\n            ],\n            "scripts": []\n          },\n          "configurations": {\n            "production": {\n              "fileReplacements": [\n                {\n                  "replace": "src/environments/environment.ts",\n                  "with": "src/environments/environment.prod.ts"\n                }\n              ],\n              "optimization": true,\n              "outputHashing": "all",\n              "sourceMap": false,\n              "extractCss": true,\n              "namedChunks": false,\n              "aot": true,\n              "extractLicenses": true,\n              "vendorChunk": false,\n              "buildOptimizer": true,\n              "budgets": [\n                {\n                  "type": "initial",\n                  "maximumWarning": "2kb",\n                  "maximumError": "5kb"\n                }\n              ]\n            }\n          }\n        },\n        "serve": {\n          "builder": "@angular-devkit/build-angular:dev-server",\n          "options": {\n            "browserTarget": "multibots:build"\n          },\n          "configurations": {\n            "production": {\n              "browserTarget": "multibots:build:production"\n            }\n          }\n        },\n        "test": {\n          "builder": "@angular-devkit/build-angular:karma",\n          "options": {\n            "main": "src/test.ts",\n            "polyfills": "src/polyfills.ts",\n            "tsConfig": "tsconfig.spec.json",\n            "karmaConfig": "karma.conf.js",\n            "assets": [\n              "src/favicon.ico",\n              "src/assets"\n            ],\n            "styles": [\n              "src/styles.css"\n            ],\n            "scripts": []\n          }\n        }\n      }\n    }\n  },\n  "defaultProject": "multibots"\n}
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "projects": {
+    "multibots": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:application",
+          "options": {
+            "outputPath": "dist/multibots",
+            "index": "src/index.html",
+            "browser": "src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": [
+              "src/styles.css"
+            ]
+          }
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "buildTarget": "multibots:build"
+          }
+        }
+      }
+    }
+  }
+}

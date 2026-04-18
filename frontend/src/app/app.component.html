@@ -1,0 +1,39 @@
+<div class="page">
+  <h1>Phase 1 Dashboard - Rule-based Signals</h1>
+
+  <section class="controls">
+    <label>
+      Mã cổ phiếu (tối đa 5, cách nhau dấu phẩy)
+      <input [ngModel]="symbolsInput()" (ngModelChange)="symbolsInput.set($event)" />
+    </label>
+    <label>
+      MA ngắn
+      <input type="number" [ngModel]="shortMa()" (ngModelChange)="shortMa.set(+$event)" min="2" />
+    </label>
+    <label>
+      MA dài
+      <input type="number" [ngModel]="longMa()" (ngModelChange)="longMa.set(+$event)" min="3" />
+    </label>
+    <label>
+      RSI
+      <input type="number" [ngModel]="rsi()" (ngModelChange)="rsi.set(+$event)" min="2" />
+    </label>
+    <button (click)="analyze()" [disabled]="loading() || symbols().length === 0">Phân tích</button>
+  </section>
+
+  <p *ngIf="error()" class="error">{{ error() }}</p>
+  <p *ngIf="loading()">Đang tải tín hiệu realtime...</p>
+
+  <section class="grid" *ngIf="results().length">
+    <article class="card" *ngFor="let row of results()">
+      <h2>{{ row.symbol }}</h2>
+      <p class="signal" [class.buy]="row.action === 'buy'" [class.sell]="row.action === 'sell'">
+        {{ row.action | uppercase }} ({{ row.confidence | percent:'1.0-0' }})
+      </p>
+      <p>{{ row.reasons.join(', ') }}</p>
+      <svg viewBox="0 0 240 80" width="240" height="80" role="img" aria-label="Biểu đồ giá">
+        <polyline [attr.points]="chartPoints(row.prices)" fill="none" stroke="#2563eb" stroke-width="2"></polyline>
+      </svg>
+    </article>
+  </section>
+</div>
