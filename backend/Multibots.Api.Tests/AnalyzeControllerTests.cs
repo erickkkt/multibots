@@ -36,5 +36,10 @@ public class AnalyzeControllerTests
                 ]
             });
         }
+
+        public Task<PortfolioSimulationResponse> SimulatePortfolioAsync(PortfolioSimulationRequest request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new PortfolioSimulationResponse());
+        }
     }
 }

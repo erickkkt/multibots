@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Tuple
 
 
 @dataclass
@@ -99,6 +99,16 @@ def compute_macd(closes: List[float]) -> tuple[float, float]:
 
 
 def build_signal(symbol: str, rows: List[Dict], parameters: AnalysisParameters) -> Dict:
+    if len(rows) < 2:
+        latest = rows[-1] if rows else {"date": "", "close": 0.0}
+        return {
+            "symbol": symbol,
+            "action": "hold",
+            "confidence": 0.5,
+            "reasons": ["Không đủ dữ liệu"],
+            "prices": [{"date": latest["date"], "close": round(latest["close"], 2)}],
+        }
+
     closes = [row["close"] for row in rows]
     volumes = [row["volume"] for row in rows]
 
@@ -154,6 +164,160 @@ def build_signal(symbol: str, rows: List[Dict], parameters: AnalysisParameters) 
         "confidence": round(confidence, 2),
         "reasons": reasons or ["Tín hiệu trung tính"],
         "prices": [{"date": row["date"], "close": round(row["close"], 2)} for row in rows[-30:]],
+    }
+
+
+def build_signal_series(symbol: str, rows: List[Dict], parameters: AnalysisParameters) -> List[Dict]:
+    series: List[Dict] = []
+    for index, row in enumerate(rows):
+        if index < 1:
+            action = "hold"
+        else:
+            action = build_signal(symbol, rows[: index + 1], parameters)["action"]
+
+        series.append(
+            {
+                "date": row["date"],
+                "action": action,
+                "open": row["open"],
+                "high": row["high"],
+                "low": row["low"],
+                "close": row["close"],
+            }
+        )
+
+    return series
+
+
+def _simulate_ticker(
+    symbol: str,
+    allocation_capital: float,
+    rows: List[Dict],
+    parameters: AnalysisParameters,
+    stop_loss_pct: float,
+    take_profit_pct: float,
+    fee_pct_per_side: float,
+) -> Tuple[List[Dict], float, List[Dict]]:
+    fee_rate = fee_pct_per_side / 100.0
+    stop_rate = stop_loss_pct / 100.0
+    take_rate = take_profit_pct / 100.0
+    signal_rows = build_signal_series(symbol, rows, parameters)
+
+    cash = allocation_capital
+    quantity = 0.0
+    entry_price = 0.0
+    entry_date = ""
+    entry_buy_fee = 0.0
+    trades: List[Dict] = []
+    equity_points: List[Dict] = []
+
+    for row in signal_rows:
+        close = float(row["close"])
+        high = float(row["high"])
+        low = float(row["low"])
+        action = str(row["action"]).lower()
+        date = str(row["date"])
+
+        if quantity > 0:
+            stop_price = entry_price * (1 - stop_rate) if stop_rate > 0 else None
+            take_price = entry_price * (1 + take_rate) if take_rate > 0 else None
+
+            exit_reason = None
+            exit_price = None
+            if stop_price is not None and low <= stop_price:
+                exit_reason = "StopLoss"
+                exit_price = stop_price
+            elif take_price is not None and high >= take_price:
+                exit_reason = "TakeProfit"
+                exit_price = take_price
+            elif action == "sell":
+                exit_reason = "SellSignal"
+                exit_price = close
+
+            if exit_reason and exit_price is not None:
+                sell_value = quantity * exit_price
+                sell_fee = sell_value * fee_rate
+                entry_value = quantity * entry_price
+                gross_pnl = sell_value - entry_value
+                net_pnl = gross_pnl - entry_buy_fee - sell_fee
+                cash += sell_value - sell_fee
+                trades.append(
+                    {
+                        "symbol": symbol,
+                        "entryDate": entry_date,
+                        "exitDate": date,
+                        "entryPrice": round(entry_price, 4),
+                        "exitPrice": round(exit_price, 4),
+                        "quantity": round(quantity, 8),
+                        "grossPnl": round(gross_pnl, 4),
+                        "netPnl": round(net_pnl, 4),
+                        "exitReason": exit_reason,
+                    }
+                )
+                quantity = 0.0
+                entry_price = 0.0
+                entry_date = ""
+                entry_buy_fee = 0.0
+
+        if quantity == 0 and action == "buy" and close > 0:
+            quantity = cash / (close * (1 + fee_rate))
+            buy_value = quantity * close
+            entry_buy_fee = buy_value * fee_rate
+            cash -= buy_value + entry_buy_fee
+            entry_price = close
+            entry_date = date
+
+        equity_points.append({"date": date, "value": round(cash + quantity * close, 4)})
+
+    final_equity = cash + (quantity * signal_rows[-1]["close"] if signal_rows else 0.0)
+    return equity_points, final_equity, trades
+
+
+def simulate_portfolio(
+    ticker_rows: Dict[str, List[Dict]],
+    allocations_pct: Dict[str, float],
+    initial_capital: float,
+    parameters: AnalysisParameters,
+    stop_loss_pct: float,
+    take_profit_pct: float,
+    fee_pct_per_side: float,
+) -> Dict:
+    per_ticker_equity: Dict[str, Dict[str, float]] = {}
+    pnl_by_ticker: Dict[str, float] = {}
+    all_trades: List[Dict] = []
+
+    for symbol, rows in ticker_rows.items():
+        allocation_pct = float(allocations_pct[symbol])
+        allocation_capital = initial_capital * (allocation_pct / 100.0)
+        ticker_equity, final_equity, ticker_trades = _simulate_ticker(
+            symbol=symbol,
+            allocation_capital=allocation_capital,
+            rows=rows,
+            parameters=parameters,
+            stop_loss_pct=stop_loss_pct,
+            take_profit_pct=take_profit_pct,
+            fee_pct_per_side=fee_pct_per_side,
+        )
+        per_ticker_equity[symbol] = {point["date"]: float(point["value"]) for point in ticker_equity}
+        pnl_by_ticker[symbol] = round(final_equity - allocation_capital, 4)
+        all_trades.extend(ticker_trades)
+
+    all_dates = sorted({date for ticker_map in per_ticker_equity.values() for date in ticker_map})
+    equity_curve: List[Dict] = []
+    for date in all_dates:
+        total_value = 0.0
+        for ticker_map in per_ticker_equity.values():
+            if date in ticker_map:
+                total_value += ticker_map[date]
+            elif ticker_map:
+                prior_values = [value for key, value in ticker_map.items() if key < date]
+                total_value += prior_values[-1] if prior_values else 0.0
+        equity_curve.append({"timestamp": date, "totalValue": round(total_value, 4)})
+
+    return {
+        "equityCurve": equity_curve,
+        "pnlByTicker": pnl_by_ticker,
+        "trades": all_trades,
     }
 
 

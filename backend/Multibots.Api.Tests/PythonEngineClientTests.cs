@@ -31,6 +31,28 @@ public class PythonEngineClientTests
         Assert.Equal(first.GeneratedAtUtc, second.GeneratedAtUtc);
     }
 
+    [Fact]
+    public async Task SimulatePortfolioAsync_ParsesSimulationPayload()
+    {
+        var handler = new SimulationHandler();
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8000") };
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var client = new PythonEngineClient(httpClient, cache);
+
+        var request = new PortfolioSimulationRequest
+        {
+            InitialCapital = 1000000m,
+            Tickers = ["HPG"],
+            Allocation = new Dictionary<string, decimal> { ["HPG"] = 100m }
+        };
+
+        var response = await client.SimulatePortfolioAsync(request, CancellationToken.None);
+
+        Assert.Equal("Backtest", response.Mode);
+        Assert.Single(response.EquityCurve);
+        Assert.Equal(12500m, response.PnlByTicker["HPG"]);
+    }
+
     private sealed class CountingHandler : HttpMessageHandler
     {
         public int CallCount { get; private set; }
@@ -42,6 +64,27 @@ public class PythonEngineClientTests
             {
               "generatedAtUtc": "2026-01-01T00:00:00Z",
               "results": [{ "symbol": "HPG", "action": "buy", "confidence": 0.8, "reasons": ["ma"] }]
+            }
+            """;
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+            });
+        }
+    }
+
+    private sealed class SimulationHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var responseJson = """
+            {
+              "generatedAtUtc": "2026-01-01T00:00:00Z",
+              "mode": "Backtest",
+              "equityCurve": [{ "timestamp": "2026-01-01", "totalValue": 1012500 }],
+              "pnlByTicker": { "HPG": 12500 },
+              "trades": []
             }
             """;
 

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Memory;
 using Multibots.Api.Models;
 
@@ -10,7 +11,8 @@ public class PythonEngineClient(HttpClient httpClient, IMemoryCache cache) : IPy
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     public async Task<AnalyzeResponse> AnalyzeAsync(AnalyzeRequest request, CancellationToken cancellationToken)
@@ -32,6 +34,20 @@ public class PythonEngineClient(HttpClient httpClient, IMemoryCache cache) : IPy
 
         cache.Set(cacheKey, analysis, TimeSpan.FromSeconds(10));
         return analysis;
+    }
+
+    public async Task<PortfolioSimulationResponse> SimulatePortfolioAsync(
+        PortfolioSimulationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var payload = JsonSerializer.Serialize(request, JsonOptions);
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        using var response = await httpClient.PostAsync("/simulate", content, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        return JsonSerializer.Deserialize<PortfolioSimulationResponse>(json, JsonOptions)
+            ?? throw new InvalidOperationException("Python engine returned an invalid simulation payload.");
     }
 
     private static string BuildCacheKey(AnalyzeRequest request)
