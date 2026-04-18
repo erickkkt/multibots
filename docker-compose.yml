@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: multibots-postgres
+    environment:
+      POSTGRES_DB: multibots
+      POSTGRES_USER: multibots
+      POSTGRES_PASSWORD: multibots
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U multibots -d multibots"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Multibots.Api/Dockerfile
+    container_name: multibots-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=multibots;Username=multibots;Password=multibots
+      PythonEngine__BaseUrl: http://host.docker.internal:8000
+    ports:
+      - "5238:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  postgres-data:

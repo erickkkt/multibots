@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using Multibots.Api.Data;
+using Multibots.Api.Repositories;
 using Multibots.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +16,14 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddMemoryCache();
+builder.Services.AddDbContext<MultibotsDbContext>(options =>
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Host=localhost;Port=5432;Database=multibots;Username=postgres;Password=postgres";
+    options.UseNpgsql(connectionString);
+});
+builder.Services.AddScoped<IAppSettingRepository, AppSettingRepository>();
+builder.Services.AddScoped<IAppSettingService, AppSettingService>();
 builder.Services.AddHttpClient<IPythonEngineClient, PythonEngineClient>((serviceProvider, client) =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -25,6 +36,12 @@ builder.Services.AddHttpClient<IPythonEngineClient, PythonEngineClient>((service
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<MultibotsDbContext>();
+    dbContext.Database.Migrate();
+}
 
 if (app.Environment.IsDevelopment())
 {
