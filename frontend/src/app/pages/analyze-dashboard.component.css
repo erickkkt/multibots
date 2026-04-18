@@ -1,0 +1,11 @@
+.page { font-family: Arial, sans-serif; }
+.controls { display: grid; gap: 8px; grid-template-columns: repeat(5, minmax(120px, 1fr)); align-items: end; }
+.controls label { display: flex; flex-direction: column; font-size: 12px; }
+.controls input { padding: 6px; }
+.controls button { padding: 8px 12px; }
+.grid { margin-top: 16px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fff; }
+.signal { font-weight: 700; }
+.signal.buy { color: #15803d; }
+.signal.sell { color: #b91c1c; }
+.error { color: #b91c1c; }

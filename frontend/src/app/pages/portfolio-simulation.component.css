@@ -1,0 +1,79 @@
+.page {
+  display: grid;
+  gap: 16px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+input,
+select,
+button {
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button.submit {
+  width: fit-content;
+  min-width: 180px;
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+button.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.allocation,
+.results {
+  background: #fff;
+  border: 1px solid #dbe1eb;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  font-size: 13px;
+}
+
+.allocation-sum {
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.allocation-sum.invalid,
+.error,
+.negative {
+  color: #b91c1c;
+}
+
+svg {
+  max-width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}

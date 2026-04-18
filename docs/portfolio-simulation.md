@@ -4,6 +4,15 @@
 
 - `POST /api/portfolio/simulate`
 
+## Frontend page
+
+- Angular route: `/portfolio-simulation`
+- Start frontend with:
+  - `cd frontend`
+  - `npm ci`
+  - `npm start`
+- Open `http://localhost:4200/portfolio-simulation`
+
 ## Request body
 
 ```json
