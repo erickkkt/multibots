@@ -1,11 +1,40 @@
-.page { font-family: Arial, sans-serif; margin: 16px; }
-.controls { display: grid; gap: 8px; grid-template-columns: repeat(5, minmax(120px, 1fr)); align-items: end; }
-.controls label { display: flex; flex-direction: column; font-size: 12px; }
-.controls input { padding: 6px; }
-.controls button { padding: 8px 12px; }
-.grid { margin-top: 16px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fff; }
-.signal { font-weight: 700; }
-.signal.buy { color: #15803d; }
-.signal.sell { color: #b91c1c; }
-.error { color: #b91c1c; }
+.shell {
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #dde3ef;
+  background: #ffffff;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+nav {
+  display: flex;
+  gap: 12px;
+}
+
+nav a {
+  text-decoration: none;
+  color: #334155;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+nav a.active {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+main {
+  padding: 16px;
+}

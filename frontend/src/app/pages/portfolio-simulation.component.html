@@ -1,0 +1,161 @@
+<div class="page">
+  <h2>Portfolio Simulation</h2>
+
+  <section class="form-grid">
+    <label>
+      Initial capital
+      <input
+        type="number"
+        min="1"
+        [ngModel]="initialCapital()"
+        (ngModelChange)="initialCapital.set(+$event); persistSettings()"
+      />
+    </label>
+
+    <label>
+      Mode
+      <select [ngModel]="mode()" (ngModelChange)="mode.set($event); persistSettings()">
+        <option value="Backtest">Backtest</option>
+        <option value="Realtime">Realtime</option>
+      </select>
+    </label>
+
+    <label>
+      Lookback (days)
+      <input
+        type="number"
+        min="1"
+        [ngModel]="lookbackDays()"
+        (ngModelChange)="lookbackDays.set(+$event); persistSettings()"
+      />
+    </label>
+
+    <label>
+      Tickers (comma separated)
+      <input [ngModel]="tickersInput()" (ngModelChange)="onTickersInputChange($event)" />
+    </label>
+
+    <label>
+      Stop loss (%)
+      <input
+        type="number"
+        min="0"
+        step="0.1"
+        [ngModel]="stopLossPct()"
+        (ngModelChange)="stopLossPct.set(+$event); persistSettings()"
+      />
+    </label>
+
+    <label>
+      Take profit (%)
+      <input
+        type="number"
+        min="0"
+        step="0.1"
+        [ngModel]="takeProfitPct()"
+        (ngModelChange)="takeProfitPct.set(+$event); persistSettings()"
+      />
+    </label>
+
+    <label>
+      Fee % per side
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        [ngModel]="feePctPerSide()"
+        (ngModelChange)="feePctPerSide.set(+$event); persistSettings()"
+      />
+    </label>
+  </section>
+
+  <section class="allocation" *ngIf="allocationRows().length">
+    <h3>Allocation by ticker (%)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Allocation %</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of allocationRows(); let i = index">
+          <td>{{ row.ticker }}</td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="row.percent"
+              (ngModelChange)="onAllocationChange(i, $event)"
+            />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="allocation-sum" [class.invalid]="!allocationValid()">
+      Total: {{ allocationSum() | number:'1.0-2' }}%
+    </p>
+    <p *ngIf="!allocationValid()" class="error">Allocation total must equal exactly 100%.</p>
+  </section>
+
+  <button class="submit" (click)="runSimulation()" [disabled]="loading() || !canSubmit()">Run simulation</button>
+
+  <p *ngIf="loading()">Running simulation...</p>
+  <p *ngIf="error()" class="error">{{ error() }}</p>
+
+  <section class="results" *ngIf="response() as result">
+    <h3>Equity curve</h3>
+    <svg viewBox="0 0 680 240" width="680" height="240" role="img" aria-label="Portfolio equity curve">
+      <polyline [attr.points]="equityChartPoints()" fill="none" stroke="#2563eb" stroke-width="2"></polyline>
+    </svg>
+
+    <h3>P/L by ticker</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>P/L</th>
+          <th>P/L %</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of pnlRows()">
+          <td>{{ row.ticker }}</td>
+          <td [class.negative]="row.absolute < 0">{{ row.absolute | number:'1.0-2' }}</td>
+          <td>{{ row.percent === null ? '-' : (row.percent | number:'1.0-2') + '%' }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <section *ngIf="result.trades?.length">
+      <h3>Trades</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Entry date</th>
+            <th>Exit date</th>
+            <th>Entry price</th>
+            <th>Exit price</th>
+            <th>Qty</th>
+            <th>Net P/L</th>
+            <th>Exit reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let trade of result.trades">
+            <td>{{ trade.symbol }}</td>
+            <td>{{ trade.entryDate }}</td>
+            <td>{{ trade.exitDate }}</td>
+            <td>{{ trade.entryPrice | number:'1.0-4' }}</td>
+            <td>{{ trade.exitPrice | number:'1.0-4' }}</td>
+            <td>{{ trade.quantity | number:'1.0-4' }}</td>
+            <td [class.negative]="trade.netPnl < 0">{{ trade.netPnl | number:'1.0-2' }}</td>
+            <td>{{ trade.exitReason }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </section>
+</div>
