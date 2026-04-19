@@ -90,6 +90,7 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
         initial_capital = float(payload.get("initialCapital", 100000000.0))
         mode = str(payload.get("mode", "Backtest"))
         settlement_days = int(payload.get("settlementDays", 2))
+        enable_dividend_signal_adjustment = bool(payload.get("enableDividendSignalAdjustment", True))
         raw_dividend_events = payload.get("dividendEvents", [])
         if not isinstance(raw_dividend_events, list) or not raw_dividend_events:
             raw_dividend_events = self.DEFAULT_DIVIDEND_EVENTS
@@ -134,6 +135,7 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
             fee_pct_per_side=fee_pct_per_side,
             settlement_days=settlement_days,
             dividend_events=raw_dividend_events,
+            enable_dividend_signal_adjustment=enable_dividend_signal_adjustment,
         )
         self._send(
             200,
@@ -141,6 +143,7 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
                 "generatedAtUtc": datetime.now(tz=timezone.utc).isoformat(),
                 "mode": mode,
                 "settlementDays": max(0, settlement_days),
+                "enableDividendSignalAdjustment": enable_dividend_signal_adjustment,
                 "equityCurve": result["equityCurve"],
                 "pnlByTicker": result["pnlByTicker"],
                 "dividendByTicker": result["dividendByTicker"],

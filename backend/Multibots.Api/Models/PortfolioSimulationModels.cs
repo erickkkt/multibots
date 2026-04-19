@@ -37,6 +37,8 @@ public class PortfolioSimulationRequest
     [Range(0, 10)]
     public int SettlementDays { get; init; } = 2;
 
+    public bool EnableDividendSignalAdjustment { get; init; } = true;
+
     [Range(typeof(decimal), "1", "79228162514264337593543950335")]
     public decimal InitialCapital { get; init; }
 
@@ -56,6 +58,7 @@ public class PortfolioSimulationResponse
     public DateTime GeneratedAtUtc { get; init; }
     public string Mode { get; init; } = SimulationMode.Backtest.ToString();
     public int SettlementDays { get; init; } = 2;
+    public bool EnableDividendSignalAdjustment { get; init; } = true;
     public List<EquityPoint> EquityCurve { get; init; } = [];
     public Dictionary<string, decimal> PnlByTicker { get; init; } = [];
     public Dictionary<string, decimal> DividendByTicker { get; init; } = [];

@@ -105,6 +105,7 @@ public class PortfolioController(IPythonEngineClient pythonEngineClient) : Contr
             TakeProfitPct = request.TakeProfitPct,
             FeePctPerSide = request.FeePctPerSide,
             SettlementDays = request.SettlementDays,
+            EnableDividendSignalAdjustment = request.EnableDividendSignalAdjustment,
             InitialCapital = request.InitialCapital,
             DividendEvents = normalizedDividendEvents,
             Parameters = request.Parameters

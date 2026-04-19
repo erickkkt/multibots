@@ -112,6 +112,30 @@ class EngineTests(unittest.TestCase):
         self.assertAlmostEqual(50.0, result["dividendByTicker"]["AAA"], places=4)
         self.assertAlmostEqual(50.0, result["trades"][0]["dividendIncome"], places=4)
 
+    def test_simulate_portfolio_can_disable_dividend_signal_adjustment(self):
+        rows = [
+            {"date": "2026-01-01", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-02", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-03", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+        ]
+        actions = iter(["hold", "sell"])
+
+        with patch("python_engine.engine.build_signal", side_effect=lambda symbol, data, params: {"action": next(actions)}):
+            result = simulate_portfolio(
+                ticker_rows={"AAA": rows},
+                allocations_pct={"AAA": 100.0},
+                initial_capital=1000.0,
+                parameters=AnalysisParameters(),
+                stop_loss_pct=0.0,
+                take_profit_pct=0.0,
+                fee_pct_per_side=0.0,
+                dividend_events=[{"symbol": "AAA", "exDate": "2026-01-03", "amount": 5.0}],
+                enable_dividend_signal_adjustment=False,
+            )
+
+        self.assertEqual(0, len(result["trades"]))
+        self.assertAlmostEqual(0.0, result["pnlByTicker"]["AAA"], places=4)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -50,6 +50,7 @@ public class PythonEngineClientTests
 
         Assert.Equal("Backtest", response.Mode);
         Assert.Equal(2, response.SettlementDays);
+        Assert.True(response.EnableDividendSignalAdjustment);
         Assert.Single(response.EquityCurve);
         Assert.Equal(12500m, response.PnlByTicker["HPG"]);
         Assert.Equal(5000m, response.DividendByTicker["HPG"]);
@@ -85,6 +86,7 @@ public class PythonEngineClientTests
               "generatedAtUtc": "2026-01-01T00:00:00Z",
               "mode": "Backtest",
               "settlementDays": 2,
+              "enableDividendSignalAdjustment": true,
               "equityCurve": [{ "timestamp": "2026-01-01", "totalValue": 1012500 }],
               "pnlByTicker": { "HPG": 12500 },
               "dividendByTicker": { "HPG": 5000 },

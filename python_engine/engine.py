@@ -214,6 +214,7 @@ def _simulate_ticker(
     fee_pct_per_side: float,
     settlement_days: int,
     dividend_events: List[Dict],
+    enable_dividend_signal_adjustment: bool,
 ) -> Tuple[List[Dict], float, List[Dict], float]:
     fee_rate = fee_pct_per_side / 100.0
     stop_rate = stop_loss_pct / 100.0
@@ -265,10 +266,11 @@ def _simulate_ticker(
             index + 1 < len(rows) and dividend_by_date.get(str(rows[index + 1]["date"]), 0.0) > 0.0
         )
 
-        if quantity == 0 and next_day_has_dividend and action == "hold":
-            action = "buy"
-        elif quantity > 0 and next_day_has_dividend and action == "sell":
-            action = "hold"
+        if enable_dividend_signal_adjustment:
+            if quantity == 0 and next_day_has_dividend and action == "hold":
+                action = "buy"
+            elif quantity > 0 and next_day_has_dividend and action == "sell":
+                action = "hold"
 
         if quantity > 0 and dividend_amount > 0:
             dividend_income = quantity * dividend_amount
@@ -349,6 +351,7 @@ def simulate_portfolio(
     fee_pct_per_side: float,
     settlement_days: int = 2,
     dividend_events: List[Dict] | None = None,
+    enable_dividend_signal_adjustment: bool = True,
 ) -> Dict:
     per_ticker_equity: Dict[str, Dict[str, float]] = {}
     pnl_by_ticker: Dict[str, float] = {}
@@ -369,6 +372,7 @@ def simulate_portfolio(
             fee_pct_per_side=fee_pct_per_side,
             settlement_days=max(0, int(settlement_days)),
             dividend_events=effective_dividend_events,
+            enable_dividend_signal_adjustment=enable_dividend_signal_adjustment,
         )
         per_ticker_equity[symbol] = {point["date"]: float(point["value"]) for point in ticker_equity}
         pnl_by_ticker[symbol] = round(final_equity - allocation_capital, 4)
