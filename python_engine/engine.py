@@ -189,6 +189,21 @@ def build_signal_series(symbol: str, rows: List[Dict], parameters: AnalysisParam
     return series
 
 
+def _build_dividend_index(symbol: str, dividend_events: List[Dict]) -> Dict[str, float]:
+    dividend_by_date: Dict[str, float] = {}
+    symbol_upper = symbol.upper()
+    for event in dividend_events:
+        event_symbol = str(event.get("symbol", "")).strip().upper()
+        ex_date = str(event.get("exDate", "")).strip()
+        amount = float(event.get("amount", 0.0) or 0.0)
+        if event_symbol != symbol_upper or not ex_date or amount <= 0:
+            continue
+
+        dividend_by_date[ex_date] = dividend_by_date.get(ex_date, 0.0) + amount
+
+    return dividend_by_date
+
+
 def _simulate_ticker(
     symbol: str,
     allocation_capital: float,
@@ -197,26 +212,69 @@ def _simulate_ticker(
     stop_loss_pct: float,
     take_profit_pct: float,
     fee_pct_per_side: float,
-) -> Tuple[List[Dict], float, List[Dict]]:
+    settlement_days: int,
+    dividend_events: List[Dict],
+) -> Tuple[List[Dict], float, List[Dict], float]:
     fee_rate = fee_pct_per_side / 100.0
     stop_rate = stop_loss_pct / 100.0
     take_rate = take_profit_pct / 100.0
-    signal_rows = build_signal_series(symbol, rows, parameters)
+    dividend_by_date = _build_dividend_index(symbol, dividend_events)
+    adjusted_rows: List[Dict] = []
+    for row in rows:
+        date = str(row["date"])
+        dividend_amount = dividend_by_date.get(date, 0.0)
+        adjusted_rows.append(
+            {
+                "date": date,
+                "open": max(0.0, float(row["open"]) - dividend_amount),
+                "high": max(0.0, float(row["high"]) - dividend_amount),
+                "low": max(0.0, float(row["low"]) - dividend_amount),
+                "close": max(0.0, float(row["close"]) - dividend_amount),
+                "volume": float(row["volume"]),
+            }
+        )
+
+    signal_rows = build_signal_series(symbol, adjusted_rows, parameters)
 
     cash = allocation_capital
     quantity = 0.0
     entry_price = 0.0
     entry_date = ""
     entry_buy_fee = 0.0
+    entry_dividend_income = 0.0
+    pending_settlements: List[Tuple[int, float]] = []
+    total_dividend_income = 0.0
     trades: List[Dict] = []
     equity_points: List[Dict] = []
 
-    for row in signal_rows:
-        close = float(row["close"])
-        high = float(row["high"])
-        low = float(row["low"])
+    for index, row in enumerate(signal_rows):
+        if pending_settlements:
+            settled_cash = sum(amount for settle_index, amount in pending_settlements if settle_index <= index)
+            if settled_cash:
+                cash += settled_cash
+            pending_settlements = [(settle_index, amount) for settle_index, amount in pending_settlements if settle_index > index]
+
+        market_row = rows[index]
+        close = float(market_row["close"])
+        high = float(market_row["high"])
+        low = float(market_row["low"])
         action = str(row["action"]).lower()
         date = str(row["date"])
+        dividend_amount = dividend_by_date.get(date, 0.0)
+        next_day_has_dividend = (
+            index + 1 < len(rows) and dividend_by_date.get(str(rows[index + 1]["date"]), 0.0) > 0.0
+        )
+
+        if quantity == 0 and next_day_has_dividend and action == "hold":
+            action = "buy"
+        elif quantity > 0 and next_day_has_dividend and action == "sell":
+            action = "hold"
+
+        if quantity > 0 and dividend_amount > 0:
+            dividend_income = quantity * dividend_amount
+            cash += dividend_income
+            entry_dividend_income += dividend_income
+            total_dividend_income += dividend_income
 
         if quantity > 0:
             stop_price = entry_price * (1 - stop_rate) if stop_rate > 0 else None
@@ -239,8 +297,12 @@ def _simulate_ticker(
                 sell_fee = sell_value * fee_rate
                 entry_value = quantity * entry_price
                 gross_pnl = sell_value - entry_value
-                net_pnl = gross_pnl - entry_buy_fee - sell_fee
-                cash += sell_value - sell_fee
+                net_pnl = gross_pnl - entry_buy_fee - sell_fee + entry_dividend_income
+                settled_sell_cash = sell_value - sell_fee
+                if settlement_days > 0:
+                    pending_settlements.append((index + settlement_days, settled_sell_cash))
+                else:
+                    cash += settled_sell_cash
                 trades.append(
                     {
                         "symbol": symbol,
@@ -251,6 +313,7 @@ def _simulate_ticker(
                         "quantity": round(quantity, 8),
                         "grossPnl": round(gross_pnl, 4),
                         "netPnl": round(net_pnl, 4),
+                        "dividendIncome": round(entry_dividend_income, 4),
                         "exitReason": exit_reason,
                     }
                 )
@@ -258,6 +321,7 @@ def _simulate_ticker(
                 entry_price = 0.0
                 entry_date = ""
                 entry_buy_fee = 0.0
+                entry_dividend_income = 0.0
 
         if quantity == 0 and action == "buy" and close > 0:
             quantity = cash / (close * (1 + fee_rate))
@@ -267,10 +331,12 @@ def _simulate_ticker(
             entry_price = close
             entry_date = date
 
-        equity_points.append({"date": date, "value": round(cash + quantity * close, 4)})
+        pending_cash = sum(amount for _, amount in pending_settlements)
+        equity_points.append({"date": date, "value": round(cash + pending_cash + quantity * close, 4)})
 
-    final_equity = cash + (quantity * signal_rows[-1]["close"] if signal_rows else 0.0)
-    return equity_points, final_equity, trades
+    pending_cash = sum(amount for _, amount in pending_settlements)
+    final_equity = cash + pending_cash + (quantity * rows[-1]["close"] if rows else 0.0)
+    return equity_points, final_equity, trades, total_dividend_income
 
 
 def simulate_portfolio(
@@ -281,15 +347,19 @@ def simulate_portfolio(
     stop_loss_pct: float,
     take_profit_pct: float,
     fee_pct_per_side: float,
+    settlement_days: int = 2,
+    dividend_events: List[Dict] | None = None,
 ) -> Dict:
     per_ticker_equity: Dict[str, Dict[str, float]] = {}
     pnl_by_ticker: Dict[str, float] = {}
+    dividend_by_ticker: Dict[str, float] = {}
     all_trades: List[Dict] = []
+    effective_dividend_events = dividend_events or []
 
     for symbol, rows in ticker_rows.items():
         allocation_pct = float(allocations_pct[symbol])
         allocation_capital = initial_capital * (allocation_pct / 100.0)
-        ticker_equity, final_equity, ticker_trades = _simulate_ticker(
+        ticker_equity, final_equity, ticker_trades, ticker_dividend_income = _simulate_ticker(
             symbol=symbol,
             allocation_capital=allocation_capital,
             rows=rows,
@@ -297,9 +367,12 @@ def simulate_portfolio(
             stop_loss_pct=stop_loss_pct,
             take_profit_pct=take_profit_pct,
             fee_pct_per_side=fee_pct_per_side,
+            settlement_days=max(0, int(settlement_days)),
+            dividend_events=effective_dividend_events,
         )
         per_ticker_equity[symbol] = {point["date"]: float(point["value"]) for point in ticker_equity}
         pnl_by_ticker[symbol] = round(final_equity - allocation_capital, 4)
+        dividend_by_ticker[symbol] = round(ticker_dividend_income, 4)
         all_trades.extend(ticker_trades)
 
     all_dates = sorted({date for ticker_map in per_ticker_equity.values() for date in ticker_map})
@@ -317,6 +390,7 @@ def simulate_portfolio(
     return {
         "equityCurve": equity_curve,
         "pnlByTicker": pnl_by_ticker,
+        "dividendByTicker": dividend_by_ticker,
         "trades": all_trades,
     }
 

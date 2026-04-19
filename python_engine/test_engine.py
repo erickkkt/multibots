@@ -64,6 +64,54 @@ class EngineTests(unittest.TestCase):
         self.assertEqual("StopLoss", result["trades"][0]["exitReason"])
         self.assertAlmostEqual(95.0, result["trades"][0]["exitPrice"], places=4)
 
+    def test_simulate_portfolio_respects_t_plus_two_settlement_for_rebuy(self):
+        rows = [
+            {"date": "2026-01-01", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-02", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-03", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-04", "open": 110, "high": 111, "low": 109, "close": 110, "volume": 1000},
+            {"date": "2026-01-05", "open": 120, "high": 121, "low": 119, "close": 120, "volume": 1000},
+        ]
+        actions = iter(["buy", "sell", "buy", "buy"])
+
+        with patch("python_engine.engine.build_signal", side_effect=lambda symbol, data, params: {"action": next(actions)}):
+            result = simulate_portfolio(
+                ticker_rows={"AAA": rows},
+                allocations_pct={"AAA": 100.0},
+                initial_capital=1000.0,
+                parameters=AnalysisParameters(),
+                stop_loss_pct=0.0,
+                take_profit_pct=0.0,
+                fee_pct_per_side=0.0,
+                settlement_days=2,
+            )
+
+        self.assertAlmostEqual(0.0, result["pnlByTicker"]["AAA"], places=4)
+
+    def test_simulate_portfolio_includes_dividend_income_in_trade_and_pnl(self):
+        rows = [
+            {"date": "2026-01-01", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-02", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+            {"date": "2026-01-03", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000},
+        ]
+        actions = iter(["buy", "sell"])
+
+        with patch("python_engine.engine.build_signal", side_effect=lambda symbol, data, params: {"action": next(actions)}):
+            result = simulate_portfolio(
+                ticker_rows={"AAA": rows},
+                allocations_pct={"AAA": 100.0},
+                initial_capital=1000.0,
+                parameters=AnalysisParameters(),
+                stop_loss_pct=0.0,
+                take_profit_pct=0.0,
+                fee_pct_per_side=0.0,
+                dividend_events=[{"symbol": "AAA", "exDate": "2026-01-03", "amount": 5.0}],
+            )
+
+        self.assertAlmostEqual(50.0, result["pnlByTicker"]["AAA"], places=4)
+        self.assertAlmostEqual(50.0, result["dividendByTicker"]["AAA"], places=4)
+        self.assertAlmostEqual(50.0, result["trades"][0]["dividendIncome"], places=4)
+
 
 if __name__ == "__main__":
     unittest.main()

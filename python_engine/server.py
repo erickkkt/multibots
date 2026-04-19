@@ -14,6 +14,11 @@ except ImportError:  # pragma: no cover
 
 
 class AnalyzeHandler(BaseHTTPRequestHandler):
+    DEFAULT_DIVIDEND_EVENTS = [
+        {"symbol": "HPG", "exDate": "2026-01-15", "amount": 500.0},
+        {"symbol": "FPT", "exDate": "2026-02-20", "amount": 2000.0},
+    ]
+
     def do_POST(self):  # noqa: N802
         if self.path not in {"/analyze", "/simulate"}:
             self._send(404, {"error": "Not Found"})
@@ -84,6 +89,10 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
         fee_pct_per_side = float(payload.get("feePctPerSide", 0.1))
         initial_capital = float(payload.get("initialCapital", 100000000.0))
         mode = str(payload.get("mode", "Backtest"))
+        settlement_days = int(payload.get("settlementDays", 2))
+        raw_dividend_events = payload.get("dividendEvents", [])
+        if not isinstance(raw_dividend_events, list) or not raw_dividend_events:
+            raw_dividend_events = self.DEFAULT_DIVIDEND_EVENTS
 
         parameter_data: Dict = payload.get("parameters", {})
         parameters = AnalysisParameters(
@@ -123,14 +132,18 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
             stop_loss_pct=stop_loss_pct,
             take_profit_pct=take_profit_pct,
             fee_pct_per_side=fee_pct_per_side,
+            settlement_days=settlement_days,
+            dividend_events=raw_dividend_events,
         )
         self._send(
             200,
             {
                 "generatedAtUtc": datetime.now(tz=timezone.utc).isoformat(),
                 "mode": mode,
+                "settlementDays": max(0, settlement_days),
                 "equityCurve": result["equityCurve"],
                 "pnlByTicker": result["pnlByTicker"],
+                "dividendByTicker": result["dividendByTicker"],
                 "trades": result["trades"],
             },
         )

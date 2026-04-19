@@ -34,8 +34,13 @@ public class PortfolioSimulationRequest
     [Range(0, 100)]
     public decimal FeePctPerSide { get; init; } = 0.1m;
 
+    [Range(0, 10)]
+    public int SettlementDays { get; init; } = 2;
+
     [Range(typeof(decimal), "1", "79228162514264337593543950335")]
     public decimal InitialCapital { get; init; }
+
+    public List<DividendEventInput> DividendEvents { get; init; } = [];
 
     public AnalysisParameters Parameters { get; init; } = new();
 }
@@ -50,8 +55,10 @@ public class PortfolioSimulationResponse
 {
     public DateTime GeneratedAtUtc { get; init; }
     public string Mode { get; init; } = SimulationMode.Backtest.ToString();
+    public int SettlementDays { get; init; } = 2;
     public List<EquityPoint> EquityCurve { get; init; } = [];
     public Dictionary<string, decimal> PnlByTicker { get; init; } = [];
+    public Dictionary<string, decimal> DividendByTicker { get; init; } = [];
     public List<PortfolioTrade> Trades { get; init; } = [];
 }
 
@@ -71,5 +78,18 @@ public class PortfolioTrade
     public decimal Quantity { get; init; }
     public decimal GrossPnl { get; init; }
     public decimal NetPnl { get; init; }
+    public decimal DividendIncome { get; init; }
     public string ExitReason { get; init; } = string.Empty;
+}
+
+public class DividendEventInput
+{
+    [Required]
+    [StringLength(20, MinimumLength = 1)]
+    public string Symbol { get; init; } = string.Empty;
+
+    public DateOnly ExDate { get; init; }
+
+    [Range(typeof(decimal), "0.0001", "79228162514264337593543950335")]
+    public decimal Amount { get; init; }
 }
