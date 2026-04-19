@@ -72,6 +72,21 @@ public class PortfolioController(IPythonEngineClient pythonEngineClient) : Contr
             return BadRequest(ModelState);
         }
 
+        var normalizedDividendEvents = (request.DividendEvents ?? [])
+            .Select(x => new DividendEventInput
+            {
+                Symbol = x.Symbol.Trim().ToUpperInvariant(),
+                ExDate = x.ExDate,
+                Amount = x.Amount
+            })
+            .ToList();
+
+        if (normalizedDividendEvents.Any(x => string.IsNullOrWhiteSpace(x.Symbol)))
+        {
+            ModelState.AddModelError(nameof(request.DividendEvents), "Dividend event symbol is required.");
+            return BadRequest(ModelState);
+        }
+
         var totalAllocation = normalizedAllocation.Values.Sum();
         if (Math.Abs(totalAllocation - 100m) > 0.0001m)
         {
@@ -89,7 +104,10 @@ public class PortfolioController(IPythonEngineClient pythonEngineClient) : Contr
             StopLossPct = request.StopLossPct,
             TakeProfitPct = request.TakeProfitPct,
             FeePctPerSide = request.FeePctPerSide,
+            SettlementDays = request.SettlementDays,
+            EnableDividendSignalAdjustment = request.EnableDividendSignalAdjustment,
             InitialCapital = request.InitialCapital,
+            DividendEvents = normalizedDividendEvents,
             Parameters = request.Parameters
         };
 

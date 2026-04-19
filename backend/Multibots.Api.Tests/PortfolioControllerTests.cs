@@ -48,6 +48,24 @@ public class PortfolioControllerTests
         Assert.Equal(400, badRequest.StatusCode);
     }
 
+    [Fact]
+    public async Task Simulate_ReturnsBadRequest_WhenDividendSymbolIsEmpty()
+    {
+        var controller = new PortfolioController(new StubPythonEngineClient());
+        var request = new PortfolioSimulationRequest
+        {
+            InitialCapital = 1000000m,
+            Tickers = ["AAA"],
+            Allocation = new Dictionary<string, decimal> { ["AAA"] = 100m },
+            DividendEvents = [new DividendEventInput { Symbol = " ", ExDate = new DateOnly(2026, 1, 1), Amount = 100m }]
+        };
+
+        var result = await controller.Simulate(request, CancellationToken.None);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(400, badRequest.StatusCode);
+    }
+
     private sealed class StubPythonEngineClient : IPythonEngineClient
     {
         public Task<AnalyzeResponse> AnalyzeAsync(AnalyzeRequest request, CancellationToken cancellationToken)

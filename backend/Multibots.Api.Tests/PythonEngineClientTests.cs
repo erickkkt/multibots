@@ -49,8 +49,11 @@ public class PythonEngineClientTests
         var response = await client.SimulatePortfolioAsync(request, CancellationToken.None);
 
         Assert.Equal("Backtest", response.Mode);
+        Assert.Equal(2, response.SettlementDays);
+        Assert.True(response.EnableDividendSignalAdjustment);
         Assert.Single(response.EquityCurve);
         Assert.Equal(12500m, response.PnlByTicker["HPG"]);
+        Assert.Equal(5000m, response.DividendByTicker["HPG"]);
     }
 
     private sealed class CountingHandler : HttpMessageHandler
@@ -82,9 +85,12 @@ public class PythonEngineClientTests
             {
               "generatedAtUtc": "2026-01-01T00:00:00Z",
               "mode": "Backtest",
+              "settlementDays": 2,
+              "enableDividendSignalAdjustment": true,
               "equityCurve": [{ "timestamp": "2026-01-01", "totalValue": 1012500 }],
               "pnlByTicker": { "HPG": 12500 },
-              "trades": []
+              "dividendByTicker": { "HPG": 5000 },
+              "trades": [{ "symbol": "HPG", "entryDate": "2026-01-01", "exitDate": "2026-01-02", "entryPrice": 10, "exitPrice": 11, "quantity": 100, "grossPnl": 100, "netPnl": 99, "dividendIncome": 5, "exitReason": "SellSignal" }]
             }
             """;
 
