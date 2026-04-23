@@ -105,8 +105,9 @@ def build_signal(symbol: str, rows: List[Dict], parameters: AnalysisParameters) 
             "symbol": symbol,
             "action": "hold",
             "confidence": 0.5,
+            "currentPrice": round(float(latest["close"]), 2),
             "reasons": ["Không đủ dữ liệu"],
-            "prices": [{"date": latest["date"], "close": round(latest["close"], 2)}],
+            "prices": [{"date": latest["date"], "close": round(float(latest["close"]), 2)}],
         }
 
     closes = [row["close"] for row in rows]
@@ -162,6 +163,7 @@ def build_signal(symbol: str, rows: List[Dict], parameters: AnalysisParameters) 
         "symbol": symbol,
         "action": action,
         "confidence": round(confidence, 2),
+        "currentPrice": round(closes[-1], 2),
         "reasons": reasons or ["Tín hiệu trung tính"],
         "prices": [{"date": row["date"], "close": round(row["close"], 2)} for row in rows[-30:]],
     }
@@ -399,21 +401,48 @@ def simulate_portfolio(
     }
 
 
-def synthetic_ohlcv(candles: int = 120) -> List[Dict]:
-    start = datetime.now(timezone.utc) - timedelta(days=candles)
-    price = 20.0
+def synthetic_foreign_trade(symbol: str = "", n_days: int = 30) -> List[Dict]:
+    """Generate synthetic foreign investor buy/sell data, seeded per symbol."""
+    import random
+    seed = sum(ord(c) for c in symbol.upper()) if symbol else 12345
+    rng = random.Random(seed)
+    start = datetime.now(timezone.utc) - timedelta(days=n_days)
     rows = []
-
-    for i in range(candles):
-        drift = 0.02 if i % 7 != 0 else -0.05
-        price = max(1.0, price + drift)
-        volume = 100_000 + (i % 5) * 20_000
+    for i in range(n_days):
+        buy_vol = rng.randint(200_000, 5_000_000)
+        sell_vol = rng.randint(200_000, 5_000_000)
+        price = 20.0 + rng.uniform(-2, 2)
         rows.append(
             {
                 "date": (start + timedelta(days=i)).strftime("%Y-%m-%d"),
-                "open": round(price - 0.2, 2),
-                "high": round(price + 0.4, 2),
-                "low": round(price - 0.5, 2),
+                "buyVol": float(buy_vol),
+                "sellVol": float(sell_vol),
+                "buyVal": round(buy_vol * price, 0),
+                "sellVal": round(sell_vol * price, 0),
+            }
+        )
+    return rows
+
+
+def synthetic_ohlcv(symbol: str = "", candles: int = 120) -> List[Dict]:
+    import random
+    seed = sum(ord(c) for c in symbol.upper()) if symbol else 42
+    rng = random.Random(seed)
+    start = datetime.now(timezone.utc) - timedelta(days=candles)
+    # Base price varies by symbol (10–80 range)
+    price = 10.0 + (seed % 71)
+    rows = []
+
+    for i in range(candles):
+        drift = rng.uniform(-0.8, 1.0)
+        price = max(1.0, price + drift)
+        volume = rng.randint(50_000, 500_000)
+        rows.append(
+            {
+                "date": (start + timedelta(days=i)).strftime("%Y-%m-%d"),
+                "open": round(price - rng.uniform(0, 0.5), 2),
+                "high": round(price + rng.uniform(0, 0.8), 2),
+                "low": round(price - rng.uniform(0, 0.8), 2),
                 "close": round(price, 2),
                 "volume": float(volume),
             }

@@ -7,10 +7,10 @@ from typing import Dict, List
 
 try:
     from .engine import AnalysisParameters, build_signal, simulate_portfolio
-    from .vnstock_adapter import fetch_ohlcv
+    from .vnstock_adapter import fetch_ohlcv, fetch_foreign_trade
 except ImportError:  # pragma: no cover
     from engine import AnalysisParameters, build_signal, simulate_portfolio
-    from vnstock_adapter import fetch_ohlcv
+    from vnstock_adapter import fetch_ohlcv, fetch_foreign_trade
 
 
 class AnalyzeHandler(BaseHTTPRequestHandler):
@@ -51,7 +51,10 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
             for symbol in symbols:
                 ticker = str(symbol).strip().upper()
                 rows = fetch_ohlcv(ticker, parameters.candles)
-                results.append(build_signal(ticker, rows, parameters))
+                signal = build_signal(ticker, rows, parameters)
+                foreign_trade = fetch_foreign_trade(ticker, 30)
+                signal["foreignTrade"] = foreign_trade
+                results.append(signal)
 
             self._send(
                 200,

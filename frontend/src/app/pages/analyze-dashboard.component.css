@@ -3,9 +3,37 @@
 .controls label { display: flex; flex-direction: column; font-size: 12px; }
 .controls input { padding: 6px; }
 .controls button { padding: 8px 12px; }
-.grid { margin-top: 16px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.grid { margin-top: 16px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fff; }
-.signal { font-weight: 700; }
+
+/* Card header: symbol + current price */
+.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.card-header h3 { margin: 0; font-size: 18px; }
+.current-price { font-size: 20px; font-weight: 700; color: #1d4ed8; }
+.price-unit { font-size: 13px; font-weight: 400; color: #6b7280; }
+
+/* Signal */
+.signal { font-weight: 700; font-size: 15px; margin: 4px 0; }
 .signal.buy { color: #15803d; }
 .signal.sell { color: #b91c1c; }
+.reasons { font-size: 12px; color: #6b7280; margin: 2px 0 8px; }
+
+/* Chart label */
+.chart-label { font-size: 11px; color: #9ca3af; margin: 8px 0 2px; }
+
+/* Foreign investor section */
+.foreign-section { margin-top: 10px; border-top: 1px solid #f0f0f0; padding-top: 8px; }
+
+/* Ratio bar */
+.ratio-bar-wrap { margin-top: 6px; }
+.ratio-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; }
+.ratio-buy { background: #15803d; }
+.ratio-sell { background: #b91c1c; }
+.ratio-labels { display: flex; justify-content: space-between; margin-top: 3px; font-size: 11px; }
+
+/* Foreign summary totals */
+.foreign-summary { display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px; font-weight: 600; }
+.buy-label { color: #15803d; }
+.sell-label { color: #b91c1c; }
+
 .error { color: #b91c1c; }
