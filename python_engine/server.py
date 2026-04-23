@@ -6,10 +6,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Dict, List
 
 try:
-    from .engine import AnalysisParameters, build_signal, simulate_portfolio
+    from .engine import AnalysisParameters, build_signal, simulate_portfolio, project_ohlcv_forward
     from .vnstock_adapter import fetch_ohlcv, fetch_foreign_trade
 except ImportError:  # pragma: no cover
-    from engine import AnalysisParameters, build_signal, simulate_portfolio
+    from engine import AnalysisParameters, build_signal, simulate_portfolio, project_ohlcv_forward
     from vnstock_adapter import fetch_ohlcv, fetch_foreign_trade
 
 
@@ -110,13 +110,22 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
         allocation_normalized_input = {str(key).strip().upper(): float(value) for key, value in allocation.items()}
         ticker_rows: Dict[str, List[Dict]] = {}
         normalized_allocation: Dict[str, float] = {}
+        is_realtime = mode.lower() == "realtime"
+
         for symbol in symbols:
             ticker = str(symbol).strip().upper()
-            rows = fetch_ohlcv(ticker, parameters.candles)
-            if start_date:
-                rows = [row for row in rows if str(row.get("date", "")) >= start_date]
-            if end_date:
-                rows = [row for row in rows if str(row.get("date", "")) <= end_date]
+            historical = fetch_ohlcv(ticker, parameters.candles)
+
+            if is_realtime:
+                # Forward projection: use historical data to calibrate, then project forward
+                rows = project_ohlcv_forward(historical, lookback_days, ticker)
+            else:
+                rows = historical
+                if start_date:
+                    rows = [row for row in rows if str(row.get("date", "")) >= start_date]
+                if end_date:
+                    rows = [row for row in rows if str(row.get("date", "")) <= end_date]
+
             if not rows:
                 self._send(400, {"error": f"No OHLC data found for ticker {ticker} in selected range"})
                 return
