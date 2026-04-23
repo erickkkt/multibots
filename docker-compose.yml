@@ -1,4 +1,12 @@
 services:
+  python-engine:
+    build:
+      context: ./python_engine
+      dockerfile: Dockerfile
+    container_name: multibots-python-engine
+    ports:
+      - "8000:8000"
+
   frontend:
     build:
       context: ./frontend
@@ -34,14 +42,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=multibots;Username=multibots;Password=multibots
-      PythonEngine__BaseUrl: http://host.docker.internal:8000
+      PythonEngine__BaseUrl: http://python-engine:8000
     ports:
       - "5238:8080"
     depends_on:
       postgres:
         condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      python-engine:
+        condition: service_started
 
 volumes:
   postgres-data:
