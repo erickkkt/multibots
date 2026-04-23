@@ -26,14 +26,57 @@
 
   <section class="grid" *ngIf="results().length">
     <article class="card" *ngFor="let row of results()">
-      <h3>{{ row.symbol }}</h3>
+      <div class="card-header">
+        <h3>{{ row.symbol }}</h3>
+        <span class="current-price">{{ formatPrice(row.currentPrice) }} <span class="price-unit">đ</span></span>
+      </div>
+
       <p class="signal" [class.buy]="row.action === 'buy'" [class.sell]="row.action === 'sell'">
         {{ row.action | uppercase }} ({{ row.confidence | percent:'1.0-0' }})
       </p>
-      <p>{{ row.reasons.join(', ') }}</p>
+      <p class="reasons">{{ row.reasons.join(', ') }}</p>
+
+      <!-- Biểu đồ giá -->
+      <p class="chart-label">Giá 30 phiên gần nhất</p>
       <svg viewBox="0 0 240 80" width="240" height="80" role="img" aria-label="Biểu đồ giá">
         <polyline [attr.points]="chartPoints(row.prices)" fill="none" stroke="#2563eb" stroke-width="2"></polyline>
       </svg>
+
+      <!-- Khối ngoại -->
+      <div class="foreign-section">
+        <p class="chart-label">Khối ngoại (30 phiên) — Mua/Bán ròng</p>
+        <svg viewBox="0 0 240 80" width="240" height="80" role="img" aria-label="Giao dịch khối ngoại">
+          <!-- baseline -->
+          <line x1="0" y1="40" x2="240" y2="40" stroke="#ccc" stroke-width="1" />
+          <rect
+            *ngFor="let bar of foreignNetBars(row.foreignTrade)"
+            [attr.x]="bar.x"
+            [attr.y]="bar.y"
+            [attr.width]="bar.w"
+            [attr.height]="bar.h"
+            [attr.fill]="bar.positive ? '#15803d' : '#b91c1c'"
+            opacity="0.85"
+          />
+        </svg>
+
+        <!-- Tỉ lệ mua/bán -->
+        <ng-container *ngIf="foreignRatio(row.foreignTrade) as ratio">
+          <div class="ratio-bar-wrap">
+            <div class="ratio-bar">
+              <div class="ratio-buy" [style.width.%]="ratio.buyPct"></div>
+              <div class="ratio-sell" [style.width.%]="ratio.sellPct"></div>
+            </div>
+            <div class="ratio-labels">
+              <span class="buy-label">Mua {{ ratio.buyPct }}%</span>
+              <span class="sell-label">Bán {{ ratio.sellPct }}%</span>
+            </div>
+          </div>
+          <div class="foreign-summary">
+            <span class="buy-label">▲ {{ formatVol(totalForeignBuy(row.foreignTrade)) }}cp</span>
+            <span class="sell-label">▼ {{ formatVol(totalForeignSell(row.foreignTrade)) }}cp</span>
+          </div>
+        </ng-container>
+      </div>
     </article>
   </section>
 </div>
