@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
+from datetime import date as date_type
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Tuple
 
@@ -401,9 +403,76 @@ def simulate_portfolio(
     }
 
 
+def project_ohlcv_forward(historical_rows: List[Dict], n_trading_days: int, symbol: str = "") -> List[Dict]:
+    """
+    Project OHLCV data forward from the last historical row.
+    Uses recent volatility and trend (last 30 candles) as a random-walk model.
+    Returns rows with future dates starting from tomorrow (weekdays only).
+    """
+    # Use symbol + today as seed so results are consistent within a day but vary by symbol
+    today = datetime.now(timezone.utc).date()
+    seed = sum(ord(c) for c in symbol.upper()) * 1000 + today.toordinal()
+    rng = random.Random(seed)
+
+    if not historical_rows:
+        return synthetic_ohlcv(symbol, n_trading_days)
+
+    closes = [float(r["close"]) for r in historical_rows]
+    last_close = closes[-1]
+    last_volume = float(historical_rows[-1].get("volume", 100_000))
+
+    # Calibrate from last 30 candles
+    lookback = min(30, len(closes) - 1)
+    if lookback > 1:
+        returns = [(closes[i] - closes[i - 1]) / max(closes[i - 1], 0.01) for i in range(-lookback, 0)]
+        mean_ret = sum(returns) / len(returns)
+        variance = sum((r - mean_ret) ** 2 for r in returns) / len(returns)
+        std_ret = variance ** 0.5
+    else:
+        mean_ret = 0.0
+        std_ret = 0.015
+
+    # Parse last historical date
+    last_date_str = str(historical_rows[-1].get("date", ""))
+    try:
+        current_date = datetime.strptime(last_date_str[:10], "%Y-%m-%d").date()
+    except ValueError:
+        current_date = today
+
+    price = last_close
+    projected: List[Dict] = []
+    days_added = 0
+
+    while days_added < n_trading_days:
+        current_date += timedelta(days=1)
+        if current_date.weekday() >= 5:  # skip weekends
+            continue
+
+        ret = rng.gauss(mean_ret, std_ret)
+        price = max(0.01, price * (1.0 + ret))
+        intraday_range = price * abs(rng.gauss(0, std_ret * 0.5))
+        open_p = round(price * (1 + rng.gauss(0, std_ret * 0.3)), 2)
+        high_p = round(price + intraday_range, 2)
+        low_p = round(max(0.01, price - intraday_range), 2)
+        volume = max(1.0, last_volume * rng.uniform(0.5, 1.5))
+
+        projected.append(
+            {
+                "date": current_date.strftime("%Y-%m-%d"),
+                "open": open_p,
+                "high": high_p,
+                "low": low_p,
+                "close": round(price, 2),
+                "volume": round(volume, 0),
+            }
+        )
+        days_added += 1
+
+    return projected
+
+
 def synthetic_foreign_trade(symbol: str = "", n_days: int = 30) -> List[Dict]:
     """Generate synthetic foreign investor buy/sell data, seeded per symbol."""
-    import random
     seed = sum(ord(c) for c in symbol.upper()) if symbol else 12345
     rng = random.Random(seed)
     start = datetime.now(timezone.utc) - timedelta(days=n_days)
@@ -425,7 +494,6 @@ def synthetic_foreign_trade(symbol: str = "", n_days: int = 30) -> List[Dict]:
 
 
 def synthetic_ohlcv(symbol: str = "", candles: int = 120) -> List[Dict]:
-    import random
     seed = sum(ord(c) for c in symbol.upper()) if symbol else 42
     rng = random.Random(seed)
     start = datetime.now(timezone.utc) - timedelta(days=candles)

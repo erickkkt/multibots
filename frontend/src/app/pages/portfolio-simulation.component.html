@@ -13,10 +13,10 @@
     </label>
 
     <label>
-      Mode
+      Chế độ
       <select [ngModel]="mode()" (ngModelChange)="mode.set($event); persistSettings()">
-        <option value="Backtest">Backtest</option>
-        <option value="Realtime">Realtime</option>
+        <option value="Backtest">Backtest (lịch sử)</option>
+        <option value="Realtime">Realtime (chiếu tương lai)</option>
       </select>
     </label>
 
@@ -105,7 +105,12 @@
   <p *ngIf="error()" class="error">{{ error() }}</p>
 
   <section class="results" *ngIf="response() as result">
-    <h3>Equity curve</h3>
+    <div class="result-header">
+      <h3>Equity curve</h3>
+      <span class="mode-badge" [class.realtime]="mode() === 'Realtime'">
+        {{ mode() === 'Realtime' ? '📈 Chiếu tương lai từ hôm nay' : '📊 Backtest lịch sử' }}
+      </span>
+    </div>
     <svg viewBox="0 0 680 240" width="680" height="240" role="img" aria-label="Portfolio equity curve">
       <polyline [attr.points]="equityChartPoints()" fill="none" stroke="#2563eb" stroke-width="2"></polyline>
     </svg>
